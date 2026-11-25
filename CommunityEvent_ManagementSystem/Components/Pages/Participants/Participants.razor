@@ -1,0 +1,178 @@
+﻿@page "/participants"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
+
+@using CommunityEvent_ManagementSystem.Data.Models
+@using CommunityEvent_ManagementSystem.Interfaces
+
+@inject IParticipantService ParticipantService
+
+<PageTitle>Participants</PageTitle>
+
+<div class="container mt-4">
+
+    <h2>Participant Management</h2>
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger">
+            @errorMessage
+        </div>
+    }
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h4>@(participant.Id == 0 ? "Add Participant" : "Edit Participant")</h4>
+
+            <EditForm Model="participant" OnValidSubmit="SaveParticipant">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="mb-3">
+                    <label>Full Name</label>
+                    <InputText class="form-control" @bind-Value="participant.FullName" />
+                </div>
+
+                <div class="mb-3">
+                    <label>Email</label>
+                    <InputText class="form-control" @bind-Value="participant.Email" />
+                </div>
+
+                <div class="mb-3">
+                    <label>Phone Number</label>
+                    <InputText class="form-control" @bind-Value="participant.PhoneNumber" />
+                </div>
+
+                <button type="submit" class="btn btn-info">Save Participant</button>
+
+                @if (participant.Id != 0)
+                {
+                    <button type="button" class="btn btn-secondary ms-2" @onclick="ClearForm">
+                        Cancel
+                    </button>
+                }
+            </EditForm>
+        </div>
+    </div>
+
+    @if (participants == null)
+    {
+        <p>Loading...</p>
+    }
+    else if (!participants.Any())
+    {
+        <div class="alert alert-info">No participants found.</div>
+    }
+    else
+    {
+        <table class="table table-bordered table-hover shadow-sm">
+            <thead class="table-dark">
+                <tr>
+                    <th>Full Name</th>
+                    <th>Email</th>
+                    <th>Phone Number</th>
+                    <th width="180">Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var item in participants)
+                {
+                    <tr>
+                        <td>@item.FullName</td>
+                        <td>@item.Email</td>
+                        <td>@item.PhoneNumber</td>
+                        <td>
+                            <button class="btn btn-warning btn-sm me-2" @onclick="() => EditParticipant(item)">
+                                Edit
+                            </button>
+
+                            <button class="btn btn-danger"
+                                    @onclick="() => DeleteParticipant(item.Id)">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <a href="/admin" class="btn btn-secondary">Back to Dashboard</a>
+
+</div>
+
+@code {
+    private List<Participant>? participants;
+    private Participant participant = new();
+
+    private string errorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadParticipants();
+    }
+
+    private async Task LoadParticipants()
+    {
+        participants = await ParticipantService.GetAllAsync();
+    }
+
+    private async Task SaveParticipant()
+    {
+        try
+        {
+            errorMessage = "";
+
+            if (participant.Id == 0)
+            {
+                await ParticipantService.AddAsync(participant);
+            }
+            else
+            {
+                await ParticipantService.UpdateAsync(participant);
+            }
+
+            ClearForm();
+            await LoadParticipants();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private void EditParticipant(Participant selectedParticipant)
+    {
+        participant = new Participant
+        {
+            Id = selectedParticipant.Id,
+            FullName = selectedParticipant.FullName,
+            Email = selectedParticipant.Email,
+            PhoneNumber = selectedParticipant.PhoneNumber
+        };
+    }
+
+    private async Task DeleteParticipant(int id)
+    {
+        try
+        {
+            errorMessage = "";
+
+            await ParticipantService.DeleteAsync(id);
+
+            participants = await ParticipantService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private void ClearForm()
+    {
+        participant = new Participant();
+        errorMessage = "";
+    }
+}

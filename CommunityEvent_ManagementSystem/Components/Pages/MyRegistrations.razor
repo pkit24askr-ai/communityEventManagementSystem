@@ -1,0 +1,104 @@
+﻿@page "/my-registrations"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+@using CommunityEvent_ManagementSystem.Data.Models
+@using CommunityEvent_ManagementSystem.Interfaces
+
+@inject IRegistrationService RegistrationService
+
+<PageTitle>My Registrations</PageTitle>
+
+<div class="container mt-4">
+
+    <h2>My Registrations</h2>
+    <p class="text-muted">View and cancel participant event registrations.</p>
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <div class="alert alert-success">@message</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+
+    @if (registrations == null)
+    {
+        <p>Loading...</p>
+    }
+    else if (!registrations.Any())
+    {
+        <div class="alert alert-info">No registrations found.</div>
+    }
+    else
+    {
+        <table class="table table-bordered table-hover shadow-sm">
+            <thead class="table-dark">
+                <tr>
+                    <th>Participant</th>
+                    <th>Email</th>
+                    <th>Event</th>
+                    <th>Registration Date</th>
+                    <th>Status</th>
+                    <th width="120">Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var item in registrations)
+                {
+                    <tr>
+                        <td>@item.Participant?.FullName</td>
+                        <td>@item.Participant?.Email</td>
+                        <td>@item.CommunityEvent?.EventName</td>
+                        <td>@item.RegistrationDate.ToShortDateString()</td>
+                        <td>@item.Status</td>
+                        <td>
+                            <button class="btn btn-danger btn-sm"
+                                    @onclick="() => CancelRegistration(item.Id)">
+                                Cancel
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <a href="/upcoming-events" class="btn btn-secondary">Back to Events</a>
+
+</div>
+
+@code {
+    private List<Registration>? registrations;
+    private string message = "";
+    private string errorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        registrations = await RegistrationService.GetAllAsync();
+    }
+
+    private async Task CancelRegistration(int registrationId)
+    {
+        try
+        {
+            message = "";
+            errorMessage = "";
+
+            await RegistrationService.DeleteAsync(registrationId);
+
+            registrations = await RegistrationService.GetAllAsync();
+
+            message = "Registration cancelled successfully.";
+        }
+        catch (Exception ex)
+        {
+            message = "";
+            errorMessage = ex.Message;
+        }
+    }
+}

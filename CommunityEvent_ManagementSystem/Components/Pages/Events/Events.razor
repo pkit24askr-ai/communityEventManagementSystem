@@ -1,0 +1,254 @@
+﻿@page "/events"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
+
+@using CommunityEvent_ManagementSystem.Data.Models
+@using CommunityEvent_ManagementSystem.Interfaces
+@using CommunityEvent_ManagementSystem.Strategies
+
+@inject IEventService EventService
+@inject IVenueService VenueService
+@inject IActivityService ActivityService
+@inject NavigationManager Navigation
+
+<PageTitle>Events</PageTitle>
+
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold">Event Management</h2>
+            <p class="text-muted">Manage and filter community events.</p>
+        </div>
+
+        <a class="btn btn-primary" href="/events/create">+ Create Event</a>
+    </div>
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <label class="form-label fw-bold">Search Events</label>
+
+            <InputText class="form-control"
+                       placeholder="Search by event name or description..."
+                       @bind-Value="searchText" />
+
+            <button class="btn btn-primary mt-3 me-2" @onclick="ApplyFilters">
+                Search
+            </button>
+
+            <button class="btn btn-secondary mt-3" @onclick="ClearFilters">
+                Clear
+            </button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h5>Filter Events</h5>
+
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Date</label>
+                    <InputDate class="form-control" @bind-Value="filterDate" />
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Venue</label>
+                    <InputSelect class="form-control" @bind-Value="selectedVenueId">
+                        <option value="0">All Venues</option>
+                        @foreach (var venue in venues)
+                        {
+                            <option value="@venue.Id">@venue.VenueName</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Activity</label>
+                    <InputSelect class="form-control" @bind-Value="selectedActivityId">
+                        <option value="0">All Activities</option>
+                        @foreach (var activity in activities)
+                        {
+                            <option value="@activity.Id">@activity.ActivityName</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-dark me-2" @onclick="ApplyFilters">Filter</button>
+                    <button class="btn btn-secondary" @onclick="ClearFilters">Clear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (filteredEvents == null)
+    {
+        <p>Loading...</p>
+    }
+    else if (!filteredEvents.Any())
+    {
+        <div class="alert alert-info">No events found.</div>
+    }
+    else
+    {
+        <table class="table table-bordered table-hover shadow-sm">
+            <thead class="table-dark">
+                    <tr>
+                        <th>Name</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Venue</th>
+                        <th>Activity</th>
+                        <th>Seats</th>
+                        <th>Status</th>
+                        <th width="230">Actions</th>
+                    </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var item in filteredEvents)
+                {
+                    <tr>
+                        <td>@item.EventName</td>
+                        <td>@item.EventDate.ToShortDateString()</td>
+                        <td>@item.StartTime.ToString(@"hh\:mm") - @item.EndTime.ToString(@"hh\:mm")</td>
+
+                        <td>
+                            @string.Join(", ", item.EventVenues.Select(v => v.Venue!.VenueName))
+                        </td>
+
+                        <td>
+                            @string.Join(", ", item.EventActivities.Select(a => a.Activity!.ActivityName))
+                        </td>
+
+                        <td>
+                            @{
+                                var registered = item.Registrations?.Count ?? 0;
+                                var remaining = item.Capacity - registered;
+                            }
+
+                            @if (remaining == 0)
+                            {
+                                <span class="badge bg-danger">Full</span>
+                            }
+                            else if (remaining <= 5)
+                            {
+                                <span class="badge bg-warning text-dark">
+                                    @remaining / @item.Capacity
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">
+                                    @remaining / @item.Capacity
+                                </span>
+                            }
+                        </td>
+                        <td>
+                            @if (item.EventDate.Date > DateTime.Today)
+                            {
+                                <span class="badge bg-success">Upcoming</span>
+                            }
+                            else if (item.EventDate.Date == DateTime.Today)
+                            {
+                                <span class="badge bg-warning text-dark">Today</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Completed</span>
+                            }
+                        </td>
+
+                        <td>
+                            <button class="btn btn-info btn-sm me-2"
+                                    @onclick='() => Navigation.NavigateTo($"/events/details/{item.Id}")'>
+                                View
+                            </button>
+
+                            <button class="btn btn-warning btn-sm me-2"
+                                    @onclick='() => Navigation.NavigateTo($"/events/edit/{item.Id}")'>
+                                Edit
+                            </button>
+
+                            <button class="btn btn-danger btn-sm"
+                                    @onclick='() => Navigation.NavigateTo($"/events/delete/{item.Id}")'>
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <a href="/admin" class="btn btn-secondary">Back to Dashboard</a>
+
+</div>
+
+@code {
+    private List<CommunityEvent> allEvents = new();
+    private List<CommunityEvent>? filteredEvents;
+
+    private List<Venue> venues = new();
+    private List<Activity> activities = new();
+    private string searchText = string.Empty;
+
+    private DateTime? filterDate;
+    private int selectedVenueId = 0;
+    private int selectedActivityId = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        allEvents = await EventService.GetAllAsync();
+        filteredEvents = allEvents;
+
+        venues = await VenueService.GetAllAsync();
+        activities = await ActivityService.GetAllAsync();
+    }
+
+    private void ApplyFilters()
+    {
+        var result = allEvents;
+
+        if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            result = result
+                .Where(e =>
+                    e.EventName.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                    e.Description.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        var context = new EventFilterContext();
+
+        if (filterDate.HasValue)
+        {
+            context.SetStrategy(new DateFilterStrategy(filterDate.Value));
+            result = context.ApplyFilter(result);
+        }
+
+        if (selectedVenueId > 0)
+        {
+            context.SetStrategy(new VenueFilterStrategy(selectedVenueId));
+            result = context.ApplyFilter(result);
+        }
+
+        if (selectedActivityId > 0)
+        {
+            context.SetStrategy(new ActivityFilterStrategy(selectedActivityId));
+            result = context.ApplyFilter(result);
+        }
+
+        filteredEvents = result;
+    }
+
+    private void ClearFilters()
+    {
+        filterDate = null;
+        selectedVenueId = 0;
+        selectedActivityId = 0;
+        filteredEvents = allEvents;
+        searchText = string.Empty;
+    }
+}

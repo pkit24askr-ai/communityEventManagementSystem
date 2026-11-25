@@ -1,0 +1,65 @@
+﻿@page "/events/details/{Id:int}"
+@rendermode InteractiveServer
+
+@using CommunityEvent_ManagementSystem.Data.Models
+@using CommunityEvent_ManagementSystem.Interfaces
+
+@inject IEventService EventService
+
+<PageTitle>Event Details</PageTitle>
+
+<div class="container mt-4">
+
+    <h2>Event Details</h2>
+
+    @if (eventItem == null)
+    {
+        <p>Loading...</p>
+    }
+    else
+    {
+        <div class="card shadow-sm">
+            <div class="card-body">
+
+                <h3>@eventItem.EventName</h3>
+                <p class="text-muted">@eventItem.Description</p>
+
+                <hr />
+
+                <p><b>Date:</b> @eventItem.EventDate.ToShortDateString()</p>
+                <p><b>Time:</b> @eventItem.StartTime.ToString(@"hh\:mm") - @eventItem.EndTime.ToString(@"hh\:mm")</p>
+                <p><b>Capacity:</b> @eventItem.Capacity</p>
+
+                <p>
+                    <b>Venue:</b>
+                    @string.Join(", ", eventItem.EventVenues.Select(v => v.Venue!.VenueName))
+                </p>
+
+                <p>
+                    <b>Activity:</b>
+                    @string.Join(", ", eventItem.EventActivities.Select(a => a.Activity!.ActivityName))
+                </p>
+
+                <p>
+                    <b>Total Registrations:</b> @eventItem.Registrations.Count
+                </p>
+
+                <a href="/events" class="btn btn-secondary">Back</a>
+
+            </div>
+        </div>
+    }
+
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private CommunityEvent? eventItem;
+
+    protected override async Task OnInitializedAsync()
+    {
+        eventItem = await EventService.GetByIdAsync(Id);
+    }
+}

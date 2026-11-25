@@ -1,0 +1,166 @@
+﻿@page "/venues"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
+
+@using CommunityEvent_ManagementSystem.Data.Models
+@using CommunityEvent_ManagementSystem.Interfaces
+
+@inject IVenueService VenueService
+
+<PageTitle>Venues</PageTitle>
+
+<div class="container mt-4">
+
+    <h2>Venue Management</h2>
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+
+            <h4>@(venue.Id == 0 ? "Add Venue" : "Edit Venue")</h4>
+
+            <EditForm Model="venue" OnValidSubmit="SaveVenue">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="mb-3">
+                    <label class="form-label">Venue Name</label>
+                    <InputText class="form-control" @bind-Value="venue.VenueName" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Address</label>
+                    <InputText class="form-control" @bind-Value="venue.Address" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Capacity</label>
+                    <InputNumber class="form-control" @bind-Value="venue.Capacity" />
+                </div>
+
+                <button type="submit" class="btn btn-success">Save Venue</button>
+
+                @if (venue.Id != 0)
+                {
+                    <button type="button" class="btn btn-secondary ms-2" @onclick="ClearForm">
+                        Cancel
+                    </button>
+                }
+            </EditForm>
+
+        </div>
+    </div>
+
+    @if (venues == null)
+    {
+        <p>Loading...</p>
+    }
+    else if (!venues.Any())
+    {
+        <div class="alert alert-info">No venues found.</div>
+    }
+    else
+    {
+        <table class="table table-bordered table-hover shadow-sm">
+            <thead class="table-dark">
+                <tr>
+                    <th>Venue Name</th>
+                    <th>Address</th>
+                    <th>Capacity</th>
+                    <th width="180">Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var item in venues)
+                {
+                    <tr>
+                        <td>@item.VenueName</td>
+                        <td>@item.Address</td>
+                        <td>@item.Capacity</td>
+                        <td>
+                            <button type="button" class="btn btn-warning btn-sm me-2" @onclick="() => EditVenue(item)">
+                                Edit
+                            </button>
+
+                            <button type="button" class="btn btn-danger btn-sm" @onclick="() => DeleteVenue(item.Id)">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <a href="/admin" class="btn btn-secondary">Back to Dashboard</a>
+
+</div>
+
+@code {
+    private List<Venue>? venues;
+    private Venue venue = new();
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadVenues();
+    }
+
+    private async Task LoadVenues()
+    {
+        venues = await VenueService.GetAllAsync();
+    }
+
+    private async Task SaveVenue()
+    {
+        try
+        {
+            errorMessage = string.Empty;
+
+            if (venue.Id == 0)
+            {
+                await VenueService.AddAsync(venue);
+            }
+            else
+            {
+                await VenueService.UpdateAsync(venue);
+            }
+
+            ClearForm();
+            await LoadVenues();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private void EditVenue(Venue selectedVenue)
+    {
+        venue = new Venue
+        {
+            Id = selectedVenue.Id,
+            VenueName = selectedVenue.VenueName,
+            Address = selectedVenue.Address,
+            Capacity = selectedVenue.Capacity
+        };
+    }
+
+    private async Task DeleteVenue(int id)
+    {
+        await VenueService.DeleteAsync(id);
+        await LoadVenues();
+    }
+
+    private void ClearForm()
+    {
+        venue = new Venue();
+        errorMessage = string.Empty;
+    }
+}

@@ -1,0 +1,231 @@
+﻿@page "/admin"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using CommunityEvent_ManagementSystem.Data.Models
+@using CommunityEvent_ManagementSystem.Interfaces
+@attribute [Authorize(Roles = "Admin")]
+
+@inject IEventService EventService
+@inject IParticipantService ParticipantService
+@inject IVenueService VenueService
+@inject IActivityService ActivityService
+@inject IRegistrationService RegistrationService
+
+<PageTitle>Admin Dashboard</PageTitle>
+
+<AuthorizeView Roles="Admin">
+    <Authorized Context="dashboardAuth">
+
+        <div class="container-fluid px-4 py-4">
+
+            <div class="dashboard-hero mb-4">
+                <h2>Welcome back, Admin 👋</h2>
+                <p>Here is what is happening in your community event system today.</p>
+            </div>
+
+            <div class="row g-4 mb-4">
+                <div class="col-md-4 col-xl">
+                    <div class="dash-card">
+                        <div class="dash-icon bg-primary">📅</div>
+                        <div>
+                            <p>Total Events</p>
+                            <h3>@totalEvents</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 col-xl">
+                    <div class="dash-card">
+                        <div class="dash-icon bg-success">👥</div>
+                        <div>
+                            <p>Participants</p>
+                            <h3>@totalParticipants</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 col-xl">
+                    <div class="dash-card">
+                        <div class="dash-icon bg-warning">📝</div>
+                        <div>
+                            <p>Registrations</p>
+                            <h3>@totalRegistrations</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 col-xl">
+                    <div class="dash-card">
+                        <div class="dash-icon bg-info">🏢</div>
+                        <div>
+                            <p>Venues</p>
+                            <h3>@totalVenues</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 col-xl">
+                    <div class="dash-card">
+                        <div class="dash-icon bg-danger">🎯</div>
+                        <div>
+                            <p>Activities</p>
+                            <h3>@totalActivities</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4 mb-4">
+                <div class="col-lg-6">
+                    <div class="section-card">
+                        <div class="section-title">
+                            <h5>📅 Upcoming Events</h5>
+                            <a href="/events" class="btn btn-sm btn-outline-primary">View All</a>
+                        </div>
+
+                        @if (!upcomingEvents.Any())
+                        {
+                            <div class="empty-box">
+                                <h6>No upcoming events found.</h6>
+                                <p>Create a new event to get started.</p>
+                                <a href="/events/create" class="btn btn-primary btn-sm">+ Create Event</a>
+                            </div>
+                        }
+                        else
+                        {
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Event</th>
+                                        <th>Date</th>
+                                        <th>Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var ev in upcomingEvents)
+                                    {
+                                        <tr>
+                                            <td>@ev.EventName</td>
+                                            <td>@ev.EventDate.ToShortDateString()</td>
+                                            <td>@ev.StartTime.ToString(@"hh\:mm") - @ev.EndTime.ToString(@"hh\:mm")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="section-card">
+                        <div class="section-title">
+                            <h5>👥 Recent Registrations</h5>
+                            <a href="/registrations" class="btn btn-sm btn-outline-primary">View All</a>
+                        </div>
+
+                        @if (!recentRegistrations.Any())
+                        {
+                            <div class="empty-box">
+                                <h6>No recent registrations found.</h6>
+                                <p>Registrations will appear here.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Participant</th>
+                                        <th>Event</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var reg in recentRegistrations)
+                                    {
+                                        <tr>
+                                            <td>@reg.Participant?.FullName</td>
+                                            <td>@reg.CommunityEvent?.EventName</td>
+                                            <td>@reg.RegistrationDate.ToShortDateString()</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card mb-4">
+                <div class="section-title">
+                    <h5>⚡ Quick Actions</h5>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md">
+                        <a class="action-card" href="/events/create">
+                            <span>📅</span>
+                            <div>
+                                <strong>Create Event</strong>
+                                <small>Add a new event</small>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <div class="section-title">
+                    <h5>🛠 Management</h5>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="/events" class="btn btn-primary">Manage Events</a>
+                    <a href="/venues" class="btn btn-success">Manage Venues</a>
+                    <a href="/activities" class="btn btn-warning text-white">Manage Activities</a>
+                    <a href="/participants" class="btn btn-secondary">Manage Participants</a>
+                </div>
+            </div>
+
+        </div>
+
+    </Authorized>
+</AuthorizeView>
+
+
+@code {
+    private int totalEvents;
+    private int totalParticipants;
+    private int totalRegistrations;
+    private int totalVenues;
+    private int totalActivities;
+
+    private List<Registration> recentRegistrations = new();
+    private List<CommunityEvent> upcomingEvents = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var activities = await ActivityService.GetAllAsync();
+        var events = await EventService.GetAllAsync();
+        var participants = await ParticipantService.GetAllAsync();
+        var venues = await VenueService.GetAllAsync();
+        var registrations = await RegistrationService.GetAllAsync();
+
+        totalActivities = activities.Count;
+        totalEvents = events.Count;
+        totalParticipants = participants.Count;
+        totalVenues = venues.Count;
+        totalRegistrations = registrations.Count;
+
+        upcomingEvents = events
+            .Where(e => e.EventDate.Date >= DateTime.Today)
+            .OrderBy(e => e.EventDate)
+            .Take(5)
+            .ToList();
+
+        recentRegistrations = registrations
+            .OrderByDescending(r => r.RegistrationDate)
+            .Take(5)
+            .ToList();
+    }
+}

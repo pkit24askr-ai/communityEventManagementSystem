@@ -1,0 +1,124 @@
+﻿@page "/register-event/{EventId:int}"
+@rendermode InteractiveServer
+
+
+@using CommunityEvent_ManagementSystem.Data.Models
+@using CommunityEvent_ManagementSystem.Interfaces
+
+@inject IEventService EventService
+@inject IParticipantService ParticipantService
+@inject IRegistrationService RegistrationService
+@inject NavigationManager Navigation
+
+<PageTitle>Register Event</PageTitle>
+
+<div class="container mt-4">
+
+    <h2>Register for Event</h2>
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(successMessage))
+    {
+        <div class="alert alert-success">@successMessage</div>
+    }
+
+    @if (eventItem == null)
+    {
+        <p>Loading...</p>
+    }
+    else
+    {
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h4>@eventItem.EventName</h4>
+                <p>@eventItem.Description</p>
+
+                <p><b>Date:</b> @eventItem.EventDate.ToShortDateString()</p>
+                <p><b>Time:</b> @eventItem.StartTime.ToString(@"hh\:mm") - @eventItem.EndTime.ToString(@"hh\:mm")</p>
+                <p><b>Remaining Seats:</b> @remainingSeats</p>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h4>Your Details</h4>
+
+                <EditForm Model="participant" OnValidSubmit="Register" FormName="RegisterEventForm">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="mb-3">
+                        <label class="form-label">Full Name</label>
+                        <InputText class="form-control" @bind-Value="participant.FullName" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <InputText class="form-control" @bind-Value="participant.Email" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Phone Number</label>
+                        <InputText class="form-control" @bind-Value="participant.PhoneNumber" />
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" disabled="@(remainingSeats <= 0)">
+                        Register
+                    </button>
+                    <a href="/upcoming-events" class="btn btn-secondary ms-2">Back</a>
+                </EditForm>
+            </div>
+        </div>
+    }
+
+</div>
+
+@code {
+    [Parameter]
+    public int EventId { get; set; }
+
+    private CommunityEvent? eventItem;
+    private Participant participant = new();
+
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+    private int remainingSeats;
+
+    protected override async Task OnInitializedAsync()
+    {
+        eventItem = await EventService.GetByIdAsync(EventId);
+
+        if (eventItem != null)
+        {
+            remainingSeats = eventItem.Capacity - eventItem.Registrations.Count;
+        }
+
+        participant = new Participant();
+        
+    }
+
+    private async Task Register()
+    {
+        try
+        {
+            errorMessage = string.Empty;
+            successMessage = string.Empty;
+
+            await ParticipantService.AddAsync(participant);
+
+            await RegistrationService.RegisterAsync(participant.Id, EventId);
+
+            successMessage = "You have successfully registered for this event.";
+
+            participant = new Participant();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+}

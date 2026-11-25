@@ -1,0 +1,183 @@
+﻿@page "/registrations"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
+
+@using CommunityEvent_ManagementSystem.Data.Models
+@using CommunityEvent_ManagementSystem.Interfaces
+
+@inject IRegistrationService RegistrationService
+@inject IParticipantService ParticipantService
+@inject IEventService EventService
+
+<PageTitle>Registrations</PageTitle>
+
+<div class="container mt-4">
+
+    <h2>Registration Management</h2>
+
+    @if (!string.IsNullOrWhiteSpace(successMessage))
+    {
+        <div class="alert alert-success">@successMessage</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h4>Register Participant for Event</h4>
+
+            <div class="mb-3">
+                <label class="form-label">Participant</label>
+                <InputSelect class="form-control" @bind-Value="selectedParticipantId">
+                    <option value="0">-- Select Participant --</option>
+                    @foreach (var participant in participants)
+                    {
+                        <option value="@participant.Id">@participant.FullName</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Event</label>
+                <InputSelect class="form-control" @bind-Value="selectedEventId">
+                    <option value="0">-- Select Event --</option>
+                    @foreach (var ev in events)
+                    {
+                        <option value="@ev.Id">@ev.EventName</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <button class="btn btn-dark" @onclick="RegisterParticipant">
+                Register
+            </button>
+        </div>
+    </div>
+
+    @if (registrations == null)
+    {
+        <p>Loading...</p>
+    }
+    else if (!registrations.Any())
+    {
+        <div class="alert alert-info">No registrations found.</div>
+    }
+    else
+    {
+        <table class="table table-bordered table-hover shadow-sm">
+            <thead class="table-dark">
+                <tr>
+                    <th>Participant</th>
+                    <th>Email</th>
+                    <th>Event</th>
+                    <th>Registration Date</th>
+                    <th>Status</th>
+                    <th width="120">Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var item in registrations)
+                {
+                    <tr>
+                        <td>@item.Participant?.FullName</td>
+                        <td>@item.Participant?.Email</td>
+                        <td>@item.CommunityEvent?.EventName</td>
+                        <td>@item.RegistrationDate.ToShortDateString()</td>
+                        <td>@item.Status</td>
+                        <td>
+                            <button class="btn btn-danger btn-sm"
+                                    @onclick="() => DeleteRegistration(item.Id)">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <a href="/admin" class="btn btn-secondary">Back to Dashboard</a>
+
+</div>
+
+@code {
+    private List<Registration>? registrations;
+    private List<Participant> participants = new();
+    private List<CommunityEvent> events = new();
+
+    private int selectedParticipantId = 0;
+    private int selectedEventId = 0;
+
+    private string successMessage = "";
+    private string errorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        registrations = await RegistrationService.GetAllAsync();
+        participants = await ParticipantService.GetAllAsync();
+        events = await EventService.GetAllAsync();
+    }
+
+    private async Task RegisterParticipant()
+    {
+        try
+        {
+            successMessage = "";
+            errorMessage = "";
+
+            if (selectedParticipantId == 0)
+            {
+                errorMessage = "Please select a participant.";
+                return;
+            }
+
+            if (selectedEventId == 0)
+            {
+                errorMessage = "Please select an event.";
+                return;
+            }
+
+            await RegistrationService.RegisterAsync(selectedParticipantId, selectedEventId);
+
+            successMessage = "Participant registered successfully.";
+
+            selectedParticipantId = 0;
+            selectedEventId = 0;
+
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private async Task DeleteRegistration(int id)
+    {
+        try
+        {
+            successMessage = "";
+            errorMessage = "";
+
+            await RegistrationService.DeleteAsync(id);
+
+            successMessage = "Registration deleted successfully.";
+
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+}

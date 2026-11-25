@@ -1,0 +1,160 @@
+.dashboard-hero {
+	background: linear-gradient(135deg,#eef4ff,#ffffff);
+	border: 1px solid #e6ecf5;
+	border-radius: 18px;
+	padding: 28px;
+	margin-bottom: 30px;
+}
+
+	.dashboard-hero h2 {
+		font-size: 2rem;
+		font-weight: 700;
+		margin-bottom: 8px;
+	}
+
+	.dashboard-hero p {
+		color: #6c757d;
+		margin-bottom: 0;
+	}
+
+/* ---------- Statistic Cards ---------- */
+
+.dash-card {
+	background: #fff;
+	border-radius: 16px;
+	padding: 24px;
+	display: flex;
+	align-items: center;
+	gap: 18px;
+	box-shadow: 0 6px 18px rgba(0,0,0,.08);
+	transition: .3s;
+	border: 1px solid #ececec;
+	height: 120px;
+}
+
+	.dash-card:hover {
+		transform: translateY(-5px);
+		box-shadow: 0 12px 25px rgba(0,0,0,.15);
+	}
+
+.dash-icon {
+	width: 60px;
+	height: 60px;
+	border-radius: 15px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	color: white;
+	font-size: 28px;
+}
+
+.dash-card p {
+	margin: 0;
+	color: #6c757d;
+	font-weight: 600;
+}
+
+.dash-card h3 {
+	margin-top: 6px;
+	font-size: 34px;
+	font-weight: bold;
+}
+
+/* ---------- Sections ---------- */
+
+.section-card {
+	background: white;
+	border-radius: 18px;
+	padding: 25px;
+	box-shadow: 0 6px 18px rgba(0,0,0,.08);
+	border: 1px solid #ececec;
+	margin-bottom: 30px;
+}
+
+.section-title {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 20px;
+}
+
+	.section-title h5 {
+		font-weight: 700;
+		margin: 0;
+	}
+
+/* ---------- Empty State ---------- */
+
+.empty-box {
+	text-align: center;
+	padding: 50px;
+	color: #777;
+}
+
+	.empty-box h6 {
+		font-weight: 700;
+		color: #444;
+	}
+
+/* ---------- Quick Actions ---------- */
+
+.action-card {
+	display: flex;
+	align-items: center;
+	gap: 15px;
+	background: #f8f9fa;
+	border-radius: 15px;
+	padding: 18px;
+	text-decoration: none;
+	color: #222;
+	border: 1px solid #ececec;
+	transition: .3s;
+	height: 100%;
+}
+
+	.action-card:hover {
+		background: #eef4ff;
+		transform: translateY(-3px);
+		text-decoration: none;
+		color: #000;
+	}
+
+	.action-card span {
+		font-size: 30px;
+	}
+
+	.action-card strong {
+		display: block;
+	}
+
+	.action-card small {
+		color: #777;
+	}
+
+/* ---------- Tables ---------- */
+
+.table thead {
+	background: #f4f6fa;
+}
+
+.table th {
+	font-weight: 600;
+}
+
+/* ---------- Responsive ---------- */
+
+@media(max-width:768px) {
+
+	.dash-card {
+		height: auto;
+	}
+
+	.dashboard-hero {
+		text-align: center;
+	}
+
+	.section-title {
+		flex-direction: column;
+		gap: 10px;
+	}
+}

@@ -1,0 +1,185 @@
+﻿@page "/upcoming-events"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+@using CommunityEvent_ManagementSystem.Data.Models
+@using CommunityEvent_ManagementSystem.Interfaces
+@using CommunityEvent_ManagementSystem.Strategies
+
+@inject IEventService EventService
+@inject IVenueService VenueService
+@inject IActivityService ActivityService
+@inject NavigationManager Navigation
+
+<PageTitle>Upcoming Events</PageTitle>
+
+<div class="container mt-4">
+
+    <h2>Upcoming Events</h2>
+    <p class="text-muted">View and filter available community events.</p>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+
+            <h5>Filter Events</h5>
+
+            <div class="row g-3">
+
+                <div class="col-md-3">
+                    <label class="form-label">Date</label>
+                    <InputDate class="form-control" @bind-Value="filterDate" />
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Venue</label>
+                    <InputSelect class="form-control" @bind-Value="selectedVenueId">
+                        <option value="0">All Venues</option>
+                        @foreach (var venue in venues)
+                        {
+                            <option value="@venue.Id">@venue.VenueName</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Activity</label>
+                    <InputSelect class="form-control" @bind-Value="selectedActivityId">
+                        <option value="0">All Activities</option>
+                        @foreach (var activity in activities)
+                        {
+                            <option value="@activity.Id">@activity.ActivityName</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-dark me-2" @onclick="ApplyFilters">Filter</button>
+                    <button class="btn btn-secondary" @onclick="ClearFilters">Clear</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    @if (filteredEvents == null)
+    {
+        <p>Loading...</p>
+    }
+    else if (!filteredEvents.Any())
+    {
+        <div class="alert alert-info">No upcoming events found.</div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var item in filteredEvents)
+            {
+                <div class="col-md-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+
+                            <h5>@item.EventName</h5>
+                            <p>@item.Description</p>
+
+                            <p><b>Date:</b> @item.EventDate.ToShortDateString()</p>
+                            <p><b>Time:</b> @item.StartTime.ToString(@"hh\:mm") - @item.EndTime.ToString(@"hh\:mm")</p>
+                            <p><b>Capacity:</b> @item.Capacity</p>
+
+                            <p>
+                                <b>Venue:</b>
+                                @string.Join(", ", item.EventVenues.Select(v => v.Venue!.VenueName))
+                            </p>
+
+                            <p>
+                                <b>Activity:</b>
+                                @string.Join(", ", item.EventActivities.Select(a => a.Activity!.ActivityName))
+                            </p>
+
+                            <button class="btn btn-primary w-100"
+                                    @onclick="() => GoToRegister(item.Id)">
+                                Register
+                            </button>
+
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+</div>
+
+@code {
+    private List<CommunityEvent> allEvents = new();
+    private List<CommunityEvent>? filteredEvents;
+
+    private List<Venue> venues = new();
+    private List<Activity> activities = new();
+
+    private DateTime? filterDate;
+    private int selectedVenueId = 0;
+    private int selectedActivityId = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        allEvents = (await EventService.GetAllAsync())
+            .Where(e => e.EventDate.Date >= DateTime.Today)
+            .ToList();
+
+        filteredEvents = allEvents;
+
+        venues = await VenueService.GetAllAsync();
+        activities = await ActivityService.GetAllAsync();
+    }
+
+    private void ApplyFilters()
+    {
+        var result = allEvents;
+
+        var context = new EventFilterContext();
+
+        if (filterDate.HasValue)
+        {
+            context.SetStrategy(new DateFilterStrategy(filterDate.Value));
+            result = context.ApplyFilter(result);
+        }
+
+        if (selectedVenueId > 0)
+        {
+            context.SetStrategy(new VenueFilterStrategy(selectedVenueId));
+            result = context.ApplyFilter(result);
+        }
+
+        if (selectedActivityId > 0)
+        {
+            context.SetStrategy(new ActivityFilterStrategy(selectedActivityId));
+            result = context.ApplyFilter(result);
+        }
+
+        filteredEvents = result;
+    }
+
+    private void ClearFilters()
+    {
+        filterDate = null;
+        selectedVenueId = 0;
+        selectedActivityId = 0;
+        filteredEvents = allEvents;
+    }
+
+    private async Task GoToRegister(int eventId)
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity == null || !user.Identity.IsAuthenticated)
+        {
+            Navigation.NavigateTo($"/Account/Login?returnUrl=/register-event/{eventId}");
+            return;
+        }
+
+        Navigation.NavigateTo($"/register-event/{eventId}");
+    }
+}

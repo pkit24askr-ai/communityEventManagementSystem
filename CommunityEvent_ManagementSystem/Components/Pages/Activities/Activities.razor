@@ -1,0 +1,168 @@
+﻿@page "/activities"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
+
+@using CommunityEvent_ManagementSystem.Data.Models
+@using CommunityEvent_ManagementSystem.Interfaces
+
+@inject IActivityService ActivityService
+
+<PageTitle>Activities</PageTitle>
+
+<div class="container mt-4">
+
+    <h2>Activity Management</h2>
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger">
+            @errorMessage
+        </div>
+    }
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h4>@(activity.Id == 0 ? "Add Activity" : "Edit Activity")</h4>
+
+            <EditForm Model="activity" OnValidSubmit="SaveActivity">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="mb-3">
+                    <label class="form-label">Activity Name</label>
+                    <InputText class="form-control" @bind-Value="activity.ActivityName" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Activity Type</label>
+                    <InputText class="form-control" @bind-Value="activity.ActivityType" />
+                </div>
+
+                <button type="submit" class="btn btn-warning">Save Activity</button>
+
+                @if (activity.Id != 0)
+                {
+                    <button type="button" class="btn btn-secondary ms-2" @onclick="ClearForm">
+                        Cancel
+                    </button>
+                }
+            </EditForm>
+        </div>
+    </div>
+
+    @if (activities == null)
+    {
+        <p>Loading...</p>
+    }
+    else if (!activities.Any())
+    {
+        <div class="alert alert-info">No activities found.</div>
+    }
+    else
+    {
+        <table class="table table-bordered table-hover shadow-sm">
+            <thead class="table-dark">
+                <tr>
+                    <th>Activity Name</th>
+                    <th>Activity Type</th>
+                    <th width="180">Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var item in activities)
+                {
+                    <tr>
+                        <td>@item.ActivityName</td>
+                        <td>@item.ActivityType</td>
+                        <td>
+                            <button type="button" class="btn btn-warning btn-sm me-2" @onclick="() => EditActivity(item)">
+                                Edit
+                            </button>
+
+                            <button type="button" class="btn btn-danger btn-sm" @onclick="() => DeleteActivity(item.Id)">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <a href="/admin" class="btn btn-secondary">Back to Dashboard</a>
+
+</div>
+
+@code {
+    private List<Activity>? activities;
+    private Activity activity = new();
+    private string errorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadActivities();
+    }
+
+    private async Task LoadActivities()
+    {
+        activities = await ActivityService.GetAllAsync();
+    }
+
+    private async Task SaveActivity()
+    {
+        try
+        {
+            errorMessage = "";
+
+            if (activity.Id == 0)
+            {
+                await ActivityService.AddAsync(activity);
+            }
+            else
+            {
+                await ActivityService.UpdateAsync(activity);
+            }
+
+            ClearForm();
+            await LoadActivities();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private void EditActivity(Activity selectedActivity)
+    {
+        activity = new Activity
+        {
+            Id = selectedActivity.Id,
+            ActivityName = selectedActivity.ActivityName,
+            ActivityType = selectedActivity.ActivityType
+        };
+    }
+
+    private async Task DeleteActivity(int id)
+    {
+        try
+        {
+            errorMessage = "";
+
+            await ActivityService.DeleteAsync(id);
+
+            activities = await ActivityService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private void ClearForm()
+    {
+        activity = new Activity();
+        errorMessage = "";
+    }
+}

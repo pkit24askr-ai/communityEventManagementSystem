@@ -1,0 +1,164 @@
+﻿@page "/events/edit/{Id:int}"
+@rendermode InteractiveServer
+
+@using CommunityEvent_ManagementSystem.Data.Models
+@using CommunityEvent_ManagementSystem.Interfaces
+
+@inject IEventService EventService
+@inject IVenueService VenueService
+@inject IActivityService ActivityService
+@inject NavigationManager Navigation
+
+<PageTitle>Edit Event</PageTitle>
+
+<div class="container mt-4">
+
+    <h2>Edit Event</h2>
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+
+    @if (eventItem == null)
+    {
+        <p>Loading...</p>
+    }
+    else
+    {
+        <EditForm Model="eventItem" OnValidSubmit="UpdateEvent">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="mb-3">
+                <label class="form-label">Event Name</label>
+                <InputText class="form-control" @bind-Value="eventItem.EventName" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Description</label>
+                <InputTextArea class="form-control" @bind-Value="eventItem.Description" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Event Date</label>
+                <InputDate class="form-control" @bind-Value="eventItem.EventDate" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Start Time</label>
+                <InputText class="form-control" @bind-Value="startTimeText" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">End Time</label>
+                <InputText class="form-control" @bind-Value="endTimeText" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Capacity</label>
+                <InputNumber class="form-control" @bind-Value="eventItem.Capacity" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Venue</label>
+                <InputSelect class="form-control" @bind-Value="selectedVenue">
+                    <option value="0">-- Select Venue --</option>
+                    @foreach (var item in venues)
+                    {
+                        <option value="@item.Id">@item.VenueName</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Activity</label>
+                <InputSelect class="form-control" @bind-Value="selectedActivity">
+                    <option value="0">-- Select Activity --</option>
+                    @foreach (var item in activities)
+                    {
+                        <option value="@item.Id">@item.ActivityName</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <button type="submit" class="btn btn-warning">Update Event</button>
+            <a href="/events" class="btn btn-secondary ms-2">Back</a>
+        </EditForm>
+    }
+
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private CommunityEvent? eventItem;
+
+    private string startTimeText = string.Empty;
+    private string endTimeText = string.Empty;
+    private string errorMessage = string.Empty;
+
+    private int selectedVenue = 0;
+    private int selectedActivity = 0;
+
+    private List<Venue> venues = new();
+    private List<Activity> activities = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        venues = await VenueService.GetAllAsync();
+        activities = await ActivityService.GetAllAsync();
+
+        eventItem = await EventService.GetByIdAsync(Id);
+
+        if (eventItem != null)
+        {
+            startTimeText = eventItem.StartTime.ToString(@"hh\:mm");
+            endTimeText = eventItem.EndTime.ToString(@"hh\:mm");
+
+            selectedVenue = eventItem.EventVenues.FirstOrDefault()?.VenueId ?? 0;
+            selectedActivity = eventItem.EventActivities.FirstOrDefault()?.ActivityId ?? 0;
+        }
+    }
+
+    private async Task UpdateEvent()
+    {
+        try
+        {
+            if (eventItem == null)
+                return;
+
+            errorMessage = string.Empty;
+
+            if (selectedVenue == 0)
+            {
+                errorMessage = "Please select a venue.";
+                return;
+            }
+
+            if (selectedActivity == 0)
+            {
+                errorMessage = "Please select an activity.";
+                return;
+            }
+
+            eventItem.StartTime = TimeSpan.Parse(startTimeText);
+            eventItem.EndTime = TimeSpan.Parse(endTimeText);
+
+            eventItem.SelectedVenueIds.Clear();
+            eventItem.SelectedActivityIds.Clear();
+
+            eventItem.SelectedVenueIds.Add(selectedVenue);
+            eventItem.SelectedActivityIds.Add(selectedActivity);
+
+            await EventService.UpdateAsync(eventItem);
+
+            Navigation.NavigateTo("/events");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+}

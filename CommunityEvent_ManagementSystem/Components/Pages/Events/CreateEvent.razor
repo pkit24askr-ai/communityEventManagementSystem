@@ -1,0 +1,195 @@
+﻿@page "/events/create"
+@rendermode InteractiveServer
+
+@using CommunityEvent_ManagementSystem.Data.Models
+@using CommunityEvent_ManagementSystem.Interfaces
+@using CommunityEvent_ManagementSystem.Factories
+
+@inject IEventService EventService
+@inject IVenueService VenueService
+@inject IActivityService ActivityService
+@inject NavigationManager Navigation
+
+<PageTitle>Create Event</PageTitle>
+
+<div class="container mt-5">
+
+    <div class="row justify-content-center">
+
+        <div class="col-lg-8">
+
+            <div class="card shadow-lg border-0 rounded-4">
+
+                <div class="card-body p-5">
+
+                    <h2 class="fw-bold mb-4">Create Event</h2>
+                    @if (!string.IsNullOrWhiteSpace(errorMessage))
+                    {
+                        <div class="alert alert-danger">@errorMessage</div>
+                    }
+
+                    <EditForm Model="eventItem" OnValidSubmit="SaveEvent">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="mb-3">
+                            <label class="form-label">Event Name</label>
+                            <InputText class="form-control" @bind-Value="eventItem.EventName" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <InputTextArea class="form-control" @bind-Value="eventItem.Description" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Event Date</label>
+                            <InputDate class="form-control" @bind-Value="eventItem.EventDate" />
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Start Time</label>
+                                <InputSelect class="form-control" @bind-Value="startTimeText">
+                                    <option value="09:00">09:00 AM</option>
+                                    <option value="10:00">10:00 AM</option>
+                                    <option value="11:00">11:00 AM</option>
+                                    <option value="12:00">12:00 PM</option>
+                                    <option value="13:00">01:00 PM</option>
+                                    <option value="14:00">02:00 PM</option>
+                                    <option value="15:00">03:00 PM</option>
+                                    <option value="16:00">04:00 PM</option>
+                                    <option value="17:00">05:00 PM</option>
+                                    <option value="18:00">06:00 PM</option>
+                                </InputSelect>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">End Time</label>
+                                <InputSelect class="form-control" @bind-Value="endTimeText">
+                                    <option value="10:00">10:00 AM</option>
+                                    <option value="11:00">11:00 AM</option>
+                                    <option value="12:00">12:00 PM</option>
+                                    <option value="13:00">01:00 PM</option>
+                                    <option value="14:00">02:00 PM</option>
+                                    <option value="15:00">03:00 PM</option>
+                                    <option value="16:00">04:00 PM</option>
+                                    <option value="17:00">05:00 PM</option>
+                                    <option value="18:00">06:00 PM</option>
+                                </InputSelect>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Capacity</label>
+                            <InputNumber class="form-control" @bind-Value="eventItem.Capacity" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Venue</label>
+                            <InputSelect class="form-control" @bind-Value="selectedVenue">
+                                <option value="0">-- Select Venue --</option>
+                                @foreach (var item in venues)
+                                {
+                                    <option value="@item.Id">@item.VenueName</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Activity</label>
+                            <InputSelect class="form-control" @bind-Value="selectedActivity">
+                                <option value="0">-- Select Activity --</option>
+                                @foreach (var item in activities)
+                                {
+                                    <option value="@item.Id">@item.ActivityName</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Save Event</button>
+                        <a href="/events" class="btn btn-secondary ms-2">Back</a>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+                    
+
+
+
+
+   
+ 
+
+@code {
+    private CommunityEvent eventItem = new();
+    private string startTimeText = "09:00";
+    private string endTimeText = "12:00";
+    private string errorMessage = string.Empty;
+
+    private int selectedVenue = 0;
+    private int selectedActivity = 0;
+
+    private List<Venue> venues = new();
+    private List<Activity> activities = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        venues = await VenueService.GetAllAsync();
+        activities = await ActivityService.GetAllAsync();
+    }
+
+    private async Task SaveEvent()
+    {
+        try
+        {
+            errorMessage = string.Empty;
+
+            if (!TimeSpan.TryParse(startTimeText, out var start))
+            {
+                errorMessage = "Invalid start time.";
+                return;
+            }
+
+            if (!TimeSpan.TryParse(endTimeText, out var end))
+            {
+                errorMessage = "Invalid end time.";
+                return;
+            }
+            if (end <= start)
+            {
+                errorMessage = "End time must be after start time.";
+                return;
+            }
+
+
+            eventItem.StartTime = start;
+            eventItem.EndTime = end;
+
+            eventItem.StartTime = TimeSpan.Parse(startTimeText);
+            eventItem.EndTime = TimeSpan.Parse(endTimeText);
+
+            var newEvent = EventFactory.CreateEvent(
+                eventItem.EventName,
+                eventItem.Description,
+                eventItem.EventDate,
+                eventItem.StartTime,
+                eventItem.EndTime,
+                eventItem.Capacity
+            );
+
+            newEvent.SelectedVenueIds.Add(selectedVenue);
+            newEvent.SelectedActivityIds.Add(selectedActivity);
+
+            await EventService.AddAsync(newEvent);
+
+            Navigation.NavigateTo("/events");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+}
